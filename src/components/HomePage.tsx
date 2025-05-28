@@ -1,25 +1,13 @@
 "use client"
 
 import type React from "react"
+import Link from "next/link"
 import { useEffect, useState, type FC, type JSX } from "react"
-import {
-  Calendar,
-  BarChart3,
-  Zap,
-  Users,
-  Globe,
-  ArrowRight,
-  Check,
-  Sparkles,
-  Star,
-  Play,
-  ArrowUpCircle,
-  Moon,
-  Sun,
-} from "lucide-react"
+import { Calendar, BarChart3, Zap, Users, Globe, ArrowRight, Check, Sparkles, Star, Play, ArrowUpCircle, Rocket, Target, Menu, X } from 'lucide-react'
 import { gsap } from "gsap"
 import { ScrollTrigger } from "gsap/ScrollTrigger"
 import { ScrollToPlugin } from "gsap/ScrollToPlugin"
+import {  SignedIn, SignedOut } from "@clerk/nextjs"
 
 gsap.registerPlugin(ScrollTrigger, ScrollToPlugin)
 
@@ -57,148 +45,155 @@ interface Testimonial {
 const Homepage: FC = () => {
   const [isVisible, setIsVisible] = useState<Record<string, boolean>>({})
   const [mousePosition, setMousePosition] = useState<MousePosition>({ x: 0, y: 0 })
-  const [isDarkMode, setIsDarkMode] = useState(false)
-
-  // Añadir estilos globales para las animaciones
-  useEffect(() => {
-    // Añadir estilos para las animaciones de float
-    const style = document.createElement("style")
-    style.innerHTML = `
-      @keyframes float {
-        0% { transform: translateY(0px); }
-        50% { transform: translateY(-20px); }
-        100% { transform: translateY(0px); }
-      }
-      @keyframes float-delayed {
-        0% { transform: translateY(0px); }
-        50% { transform: translateY(-15px); }
-        100% { transform: translateY(0px); }
-      }
-      .animate-float {
-        animation: float 6s ease-in-out infinite;
-      }
-      .animate-float-delayed {
-        animation: float-delayed 8s ease-in-out infinite;
-      }
-    `
-    document.head.appendChild(style)
-
-    return () => {
-      document.head.removeChild(style)
-    }
-  }, [])
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      setMousePosition({ x: e.clientX, y: e.clientY })
-    }
-    window.addEventListener("mousemove", handleMouseMove)
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          const id = entry.target.id
-          if (id && entry.isIntersecting) {
-            setIsVisible((prev) => ({ ...prev, [id]: true }))
-          }
-        })
-      },
-      { threshold: 0.1 },
-    )
+  // Configurar el seguimiento del mouse
+  const handleMouseMove = (e: MouseEvent) => {
+    setMousePosition({ x: e.clientX, y: e.clientY })
+  }
+  window.addEventListener("mousemove", handleMouseMove)
 
-    document.querySelectorAll<HTMLElement>("[id]").forEach((el) => observer.observe(el))
+  // Configurar el observer para detectar elementos visibles
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        const id = entry.target.id
+        if (id && entry.isIntersecting) {
+          setIsVisible((prev) => ({ ...prev, [id]: true }))
+        }
+      })
+    },
+    { threshold: 0.1 },
+  )
 
+  // Observar todos los elementos con ID
+  const elements = document.querySelectorAll<HTMLElement>("[id]")
+  elements.forEach((el) => observer.observe(el))
+
+  // Crear contexto GSAP para limpiar correctamente
+  const ctx = gsap.context(() => {
+    // Animación de entrada para secciones
     const sections = document.querySelectorAll("section")
     sections.forEach((section) => {
-      gsap.from(section, {
-        opacity: 0,
-        y: 50,
-        duration: 0.8,
-        ease: "power2.out",
-        scrollTrigger: {
-          trigger: section,
-          start: "top 80%",
-        },
-      })
-    })
-    gsap.from("nav", {
-      y: -100,
-      opacity: 0,
-      duration: 1,
-      ease: "power2.out",
+      gsap.fromTo(
+        section, 
+        { opacity: 0, y: 50 }, 
+        {
+          opacity: 1,
+          y: 0,
+          duration: 0.8,
+          ease: "power2.out",
+          scrollTrigger: {
+            trigger: section,
+            start: "top 80%",
+          },
+        }
+      )
     })
 
-    return () => {
-      observer.disconnect()
-      window.removeEventListener("mousemove", handleMouseMove)
-      ScrollTrigger.getAll().forEach((trigger) => trigger.kill())
-    }
-  }, [])
+    // Animación de entrada para la navegación
+    gsap.fromTo(
+      "nav", 
+      { y: -100, opacity: 0 }, 
+      {
+        y: 0,
+        opacity: 1,
+        duration: 1,
+        ease: "power2.out",
+      }
+    )
+  })
+
+  // Función de limpieza
+  return () => {
+    // Limpiar observer
+    observer.disconnect()
+    
+    // Limpiar event listener
+    window.removeEventListener("mousemove", handleMouseMove)
+    
+    // Limpiar todas las animaciones GSAP y ScrollTriggers
+    ctx.revert() // Esto limpia todas las animaciones creadas en el contexto
+    
+    // Asegurarse de que todos los ScrollTriggers se eliminen
+    ScrollTrigger.getAll().forEach(trigger => trigger.kill())
+    
+    // Limpiar cualquier animación GSAP pendiente
+    gsap.killTweensOf("*")
+  }
+}, []) // Solo se ejecuta una vez al montar el componente
 
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
     e.preventDefault()
-    gsap.to(window, { 
-      duration: 1, 
-      scrollTo: { y: `#${id}`, offsetY: 300 },
-      ease: "power2.out" 
-      })
-  }
-
-  const toggleDarkMode = () => {
-    setIsDarkMode(!isDarkMode)
+    setIsMobileMenuOpen(false)
+    gsap.to(window, {
+      duration: 1,
+      scrollTo: { y: `#${id}`, offsetY: 100 },
+      ease: "power2.out",
+    })
   }
 
   const features: Feature[] = [
     {
       id: "feature-0",
-      icon: <Calendar className="w-8 h-8" />,
+      icon: <Calendar className="w-6 h-6" />,
       title: "Programación Inteligente",
-      description: "Algoritmos que analizan tu audiencia para optimizar horarios de publicación.",
-      gradient: "from-emerald-500 to-teal-500",
+      description:
+        "Algoritmos que analizan tu audiencia para optimizar horarios de publicación y maximizar el engagement.",
+      gradient: "from-emerald-500 to-teal-600",
     },
     {
       id: "feature-1",
-      icon: <BarChart3 className="w-8 h-8" />,
+      icon: <BarChart3 className="w-6 h-6" />,
       title: "Análisis Predictivo",
-      description: "Métricas en tiempo real y predicciones avanzadas para tu contenido.",
-      gradient: "from-violet-500 to-purple-500",
+      description: "Métricas en tiempo real y predicciones avanzadas para anticipar el rendimiento de tu contenido.",
+      gradient: "from-violet-500 to-purple-600",
     },
     {
       id: "feature-2",
-      icon: <Zap className="w-8 h-8" />,
+      icon: <Zap className="w-6 h-6" />,
       title: "Automatización Total",
-      description: "Publica tu contenido automáticamente las 24 horas, los 7 días de la semana.",
-      gradient: "from-amber-500 to-orange-500",
+      description:
+        "Publica tu contenido automáticamente las 24 horas, los 7 días de la semana sin intervención manual.",
+      gradient: "from-amber-500 to-orange-600",
     },
     {
       id: "feature-3",
-      icon: <Users className="w-8 h-8" />,
+      icon: <Users className="w-6 h-6" />,
       title: "Colaboración en Equipo",
-      description: "Trabaja con tu equipo asignando roles y permisos específicos.",
-      gradient: "from-cyan-500 to-blue-500",
+      description: "Trabaja con tu equipo asignando roles, permisos específicos y flujos de aprobación personalizados.",
+      gradient: "from-cyan-500 to-sky-600",
     },
     {
       id: "feature-4",
-      icon: <Globe className="w-8 h-8" />,
+      icon: <Globe className="w-6 h-6" />,
       title: "Multi-Plataforma",
-      description: "Conecta con todas las principales redes sociales desde un solo lugar.",
-      gradient: "from-indigo-500 to-slate-500",
+      description: "Conecta con todas las principales redes sociales desde un solo lugar con sincronización perfecta.",
+      gradient: "from-slate-500 to-gray-600",
     },
     {
       id: "feature-5",
-      icon: <Sparkles className="w-8 h-8" />,
+      icon: <Sparkles className="w-6 h-6" />,
       title: "Generador con IA",
-      description: "Crea contenido de texto e imágenes usando inteligencia artificial.",
-      gradient: "from-rose-500 to-pink-500",
+      description: "Crea contenido de texto e imágenes usando inteligencia artificial de última generación.",
+      gradient: "from-rose-500 to-pink-600",
     },
   ]
 
   const pricing: PricingPlan[] = [
     {
       id: "plan-0",
-      name: "Gratuito",
+      name: "Starter",
       price: "€0",
       period: "/mes",
-      features: ["3 cuentas sociales", "50 publicaciones/mes", "Análisis básico", "Soporte por email"],
+      features: [
+        "3 cuentas sociales",
+        "50 publicaciones/mes",
+        "Análisis básico",
+        "Soporte por email",
+        "Plantillas prediseñadas",
+      ],
       buttonText: "Comenzar Gratis",
     },
     {
@@ -209,12 +204,14 @@ const Homepage: FC = () => {
       features: [
         "15 cuentas sociales",
         "Publicaciones ilimitadas",
-        "IA avanzada",
-        "Análisis detallado",
-        "Soporte prioritario",
+        "IA avanzada para contenido",
+        "Análisis detallado y reportes",
+        "Soporte prioritario 24/7",
+        "Colaboración en equipo",
+        "API personalizada",
       ],
       popular: true,
-      buttonText: "Prueba Gratuita",
+      buttonText: "Prueba Gratuita de 14 días",
     },
     {
       id: "plan-2",
@@ -223,10 +220,12 @@ const Homepage: FC = () => {
       period: "/mes",
       features: [
         "Cuentas ilimitadas",
-        "API empresarial",
-        "Soporte dedicado",
+        "API empresarial completa",
+        "Soporte dedicado premium",
         "Informes personalizados",
-        "Gestor de cuenta",
+        "Gestor de cuenta asignado",
+        "Integración personalizada",
+        "SLA garantizado",
       ],
       buttonText: "Contactar Ventas",
     },
@@ -238,345 +237,323 @@ const Homepage: FC = () => {
       name: "María García",
       role: "Directora de Marketing",
       company: "TechStart",
-      text: "Hemos aumentado nuestro engagement un 300% desde que usamos Nimi.",
+      text: "Hemos aumentado nuestro engagement un 300% y reducido el tiempo de gestión en un 80%. Nimi ha transformado completamente nuestra estrategia digital.",
     },
     {
       id: "testimonial-1",
       name: "Carlos López",
       role: "Community Manager",
       company: "CreativeAgency",
-      text: "La automatización me ahorra 10 horas semanales. Increíble herramienta.",
+      text: "La automatización me ahorra 15 horas semanales que ahora dedico a estrategia. La IA genera contenido que realmente conecta con nuestra audiencia.",
     },
     {
       id: "testimonial-2",
       name: "Ana Martínez",
       role: "CEO",
       company: "DigitalBrand",
-      text: "Los análisis predictivos nos han ayudado a optimizar completamente nuestra estrategia.",
+      text: "Los análisis predictivos nos han ayudado a optimizar completamente nuestra estrategia. ROI incrementado en un 250% en solo 6 meses.",
     },
   ]
 
+  const socialNetworks = [
+    { name: "Instagram", color: "from-pink-500 via-red-500 to-yellow-500", icon: "📷", position: "top-[15%] left-[8%]", delay: "0s" },
+    { name: "Facebook", color: "from-blue-600 to-blue-700", icon: "📘", position: "top-[25%] right-[12%]", delay: "1s" },
+    { name: "Twitter", color: "from-sky-400 to-sky-600", icon: "🐦", position: "top-[45%] left-[5%]", delay: "2s" },
+    { name: "TikTok", color: "from-gray-900 via-red-500 to-white", icon: "🎵", position: "top-[55%] right-[8%]", delay: "3s" },
+    { name: "YouTube", color: "from-red-600 to-red-700", icon: "📺", position: "top-[35%] right-[20%]", delay: "4s" },
+    { name: "LinkedIn", color: "from-blue-700 to-blue-800", icon: "💼", position: "bottom-[25%] left-[10%]", delay: "5s" },
+  ]
+
   return (
-    <div
-      className={`min-h-screen transition-colors duration-300 overflow-hidden ${
-        isDarkMode
-          ? "bg-gradient-to-br from-slate-900 to-gray-900 text-gray-100"
-          : "bg-gradient-to-br from-slate-50 to-gray-100 text-gray-800"
-      }`}
-    >
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50 text-slate-800 overflow-hidden">
+      {/* Cursor personalizado - solo en desktop */}
       <div
-        className={`fixed w-6 h-6 rounded-full pointer-events-none z-50 mix-blend-difference transition-transform duration-100 ease-out ${
-          isDarkMode ? "bg-emerald-400" : "bg-slate-600"
-        }`}
-        style={{ left: mousePosition.x - 12, top: mousePosition.y - 12 }}
+        className="fixed w-4 h-4 bg-emerald-500 rounded-full pointer-events-none z-50 mix-blend-multiply transition-transform duration-100 ease-out opacity-60 hidden lg:block"
+        style={{ left: mousePosition.x - 8, top: mousePosition.y - 8 }}
       />
 
-      {/* Navegación */}
-      <nav
-        className={`fixed top-0 w-full backdrop-blur-md shadow-sm z-40 transition-colors duration-300 ${
-          isDarkMode ? "bg-slate-900/80" : "bg-white/80"
-        }`}
-      >
-        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-          <div className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent flex items-center">
-            <div className="mr-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-2 rounded-lg">N</div>
-            Nimi
-          </div>
-          <div className="hidden md:flex space-x-8 items-center">
-            <a
-              href="#feature-0"
-              onClick={(e) => handleNavClick(e, "feature-0")}
-              className={`transition-colors duration-200 ${
-                isDarkMode ? "hover:text-emerald-400" : "hover:text-emerald-600"
-              }`}
+      {/* Navegación mejorada */}
+      <nav className="fixed top-0 w-full backdrop-blur-xl bg-white/90 shadow-sm z-40 border-b border-emerald-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
+          <div className="flex justify-between items-center">
+            {/* Logo */}
+            <div className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent flex items-center">
+              <div className="mr-2 sm:mr-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl shadow-lg">
+                <Sparkles className="w-4 h-4 sm:w-6 sm:h-6" />
+              </div>
+              Nimi
+            </div>
+
+            {/* Desktop Navigation */}
+            <div className="hidden lg:flex space-x-8 items-center">
+              <a
+                href="#features"
+                onClick={(e) => handleNavClick(e, "features")}
+                className="text-slate-600 hover:text-emerald-600 transition-colors duration-200 font-medium"
+              >
+                Características
+              </a>
+              <a
+                href="#pricing"
+                onClick={(e) => handleNavClick(e, "pricing")}
+                className="text-slate-600 hover:text-emerald-600 transition-colors duration-200 font-medium"
+              >
+                Precios
+              </a>
+              <a
+                href="#testimonials"
+                onClick={(e) => handleNavClick(e, "testimonials")}
+                className="text-slate-600 hover:text-emerald-600 transition-colors duration-200 font-medium"
+              >
+                Testimonios
+              </a>
+
+              <div className="flex gap-3 ml-6">
+                <SignedOut>
+                <Link
+                  href="/auth/sign-in"
+                  className="px-4 py-2 rounded-lg text-slate-700 hover:text-emerald-600 transition-all duration-300 font-medium border border-slate-200 hover:border-emerald-300 hover:bg-emerald-50"
+                >
+                  Iniciar sesión
+                </Link>
+
+                <Link
+                  href="/auth/sign-up"
+                  className="px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+                >
+                  Registrarme
+                </Link>
+                </SignedOut>
+                <SignedIn>
+                  <Link
+                  href="/dashboard"
+                  className="px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+                >
+                  Dashboard
+                </Link>
+                </SignedIn>
+                
+              </div>
+            </div>
+
+            {/* Mobile menu button */}
+            <button 
+              className="lg:hidden text-slate-700 p-2"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              aria-label="Menú"
             >
-              Características
-            </a>
-            <a
-              href="#plan-0"
-              onClick={(e) => handleNavClick(e, "plan-0")}
-              className={`transition-colors duration-200 ${
-                isDarkMode ? "hover:text-emerald-400" : "hover:text-emerald-600"
-              }`}
-            >
-              Precios
-            </a>
-            <a
-              href="#testimonial-0"
-              onClick={(e) => handleNavClick(e, "testimonial-0")}
-              className={`transition-colors duration-200 ${
-                isDarkMode ? "hover:text-emerald-400" : "hover:text-emerald-600"
-              }`}
-            >
-              Testimonios
-            </a>
-            <button
-              onClick={toggleDarkMode}
-              className={`p-2 rounded-full transition-all duration-200 ${
-                isDarkMode
-                  ? "bg-slate-800 text-yellow-400 hover:bg-slate-700"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-            >
-              {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
-            <button className="px-6 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-full hover:shadow-lg transform hover:scale-105 transition-all duration-200">
-              Comenzar Ahora
-            </button>
           </div>
-          <button className={`md:hidden ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
+
+          {/* Mobile Navigation */}
+          {isMobileMenuOpen && (
+            <div className="lg:hidden mt-4 pb-4 border-t border-emerald-100">
+              <div className="flex flex-col space-y-4 pt-4">
+                <a
+                  href="#features"
+                  onClick={(e) => handleNavClick(e, "features")}
+                  className="text-slate-600 hover:text-emerald-600 transition-colors duration-200 font-medium py-2"
+                >
+                  Características
+                </a>
+                <a
+                  href="#pricing"
+                  onClick={(e) => handleNavClick(e, "pricing")}
+                  className="text-slate-600 hover:text-emerald-600 transition-colors duration-200 font-medium py-2"
+                >
+                  Precios
+                </a>
+                <a
+                  href="#testimonials"
+                  onClick={(e) => handleNavClick(e, "testimonials")}
+                  className="text-slate-600 hover:text-emerald-600 transition-colors duration-200 font-medium py-2"
+                >
+                  Testimonios
+                </a>
+                
+                <div className="flex flex-col gap-3 pt-4 border-t border-emerald-100">
+                  
+                  <Link
+                    href="/auth/sign-in"
+                    className="px-4 py-2 rounded-lg text-slate-700 hover:text-emerald-600 transition-all duration-300 font-medium border border-slate-200 hover:border-emerald-300 hover:bg-emerald-50 text-center"
+                  >
+                    Iniciar sesión
+                  </Link>
+
+                  <Link
+                    href="/auth/sign-up"
+                    className="px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-medium hover:from-emerald-600 hover:to-teal-700 transition-all duration-300 shadow-lg text-center"
+                  >
+                    Registrarme
+                  </Link>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <section id="hero" className="pt-32 pb-20 text-center px-6 relative overflow-hidden">
-        {/* Iconos de redes sociales en el fondo */}
-        <div className="absolute inset-0 w-full h-full opacity-10 overflow-hidden">
-          {/* Facebook */}
-          <div className="absolute top-[10%] left-[5%] transform -rotate-12 opacity-70">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="80"
-              height="80"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              className={isDarkMode ? "text-emerald-400" : "text-slate-600"}
-            >
-              <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
-            </svg>
+      {/* Hero Section Optimizado */}
+      <section className="pt-20 sm:pt-24 lg:pt-32 pb-12 sm:pb-16 lg:pb-20 text-center px-4 sm:px-6 relative overflow-hidden">
+        
+        {/* Fondo animado simplificado */}
+        <div className="absolute inset-0 w-full h-full">
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-100/30 via-teal-50/20 to-cyan-100/30"></div>
+          
+          {/* Logos de redes sociales - solo en desktop */}
+          <div className="hidden lg:block">
+            {socialNetworks.map((social) => (
+              <div
+                key={social.name}
+                className={`absolute ${social.position} animate-pulse opacity-10 hover:opacity-20 transition-opacity duration-300`}
+                style={{ animationDelay: social.delay }}
+              >
+                <div className={`w-12 h-12 bg-gradient-to-r ${social.color} rounded-xl flex items-center justify-center text-white text-lg shadow-lg`}>
+                  {social.icon}
+                </div>
+              </div>
+            ))}
           </div>
 
-          {/* Twitter/X */}
-          <div className="absolute top-[15%] right-[10%] transform rotate-12 opacity-70">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="80"
-              height="80"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              className={isDarkMode ? "text-teal-400" : "text-slate-700"}
-            >
-              <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"></path>
-            </svg>
+          {/* Elementos decorativos simplificados */}
+          <div className="absolute top-[20%] left-[10%] transform -rotate-12 animate-pulse opacity-5">
+            <Rocket className="w-16 h-16 text-violet-600" />
           </div>
-
-          {/* LinkedIn */}
-          <div className="absolute top-[40%] left-[8%] transform rotate-6 opacity-70">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="80"
-              height="80"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              className={isDarkMode ? "text-cyan-400" : "text-slate-600"}
-            >
-              <path d="M4.98 3.5c0 1.381-1.11 2.5-2.48 2.5s-2.48-1.119-2.48-2.5c0-1.38 1.11-2.5 2.48-2.5s2.48 1.12 2.48 2.5zm.02 4.5h-5v16h5v-16zm7.982 0h-4.968v16h4.969v-8.399c0-4.67 6.029-5.052 6.029 0v8.399h4.988v-10.131c0-7.88-8.922-7.593-11.018-3.714v-2.155z"></path>
-            </svg>
-          </div>
-
-          {/* YouTube */}
-          <div className="absolute top-[50%] right-[7%] transform -rotate-12 opacity-70">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="80"
-              height="80"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              className={isDarkMode ? "text-rose-400" : "text-slate-700"}
-            >
-              <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"></path>
-            </svg>
-          </div>
-
-          {/* TikTok */}
-          <div className="absolute bottom-[15%] left-[12%] transform rotate-12 opacity-70">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="80"
-              height="80"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              className={isDarkMode ? "text-violet-400" : "text-slate-600"}
-            >
-              <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"></path>
-            </svg>
-          </div>
-
-          {/* Instagram */}
-          <div className="absolute bottom-[10%] right-[15%] transform -rotate-6 opacity-70">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="80"
-              height="80"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              className={isDarkMode ? "text-pink-400" : "text-slate-700"}
-            >
-              <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"></path>
-            </svg>
-          </div>
-
-          {/* Pinterest */}
-          <div className="absolute top-[30%] left-[25%] transform -rotate-12 opacity-70">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="70"
-              height="70"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              className={isDarkMode ? "text-amber-400" : "text-slate-600"}
-            >
-              <path
-                d="M12 0c-6.627 0-12 5.372-12 12 0 5.084 3.163 9.426 7.627 11.174-.105-.949-.2-2.405.042-3.441.218-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.655 2.568-.994 3.995-.283 1.194.599 2.169 1.777 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.138.893 2.738.098.119.112.224.083.345l-.333 1.36c-.053.22-.174.267-.402.161-1.499-.698-2.436-2.889-2.436-4.649 0-3.785 2.75-7.262 7.929-7.262 4.163 0 7.398 2.967 7.398 6.931 0 4.136-2.607 7.464-6.227 7.464-1.216 0-2.359-.631-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146 1.124.347 2.317.535 3.554.535 6.627 0 12-5.373 12-12 0-6.628-5.373-12-12-12z"
-                fillRule="evenodd"
-                clipRule="evenodd"
-              />
-            </svg>
-          </div>
-
-          {/* WhatsApp */}
-          <div className="absolute top-[60%] right-[25%] transform rotate-12 opacity-70">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="70"
-              height="70"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              className={isDarkMode ? "text-emerald-400" : "text-slate-700"}
-            >
-              <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" />
-            </svg>
+          <div className="absolute top-[60%] right-[10%] transform rotate-12 animate-pulse opacity-5">
+            <Target className="w-16 h-16 text-rose-600" />
           </div>
         </div>
 
-        <div
-          className={`max-w-4xl mx-auto transform transition-all duration-1000 ${isVisible["hero"] ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0"} relative z-10`}
-        >
-          <div className="flex justify-center mb-6">
-            <div className="animate-bounce">
-              <Star className="w-12 h-12 text-amber-500" />
+        <div className={`max-w-6xl mx-auto transform transition-all duration-1000 ${isVisible ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0"} relative z-10`}>
+          
+          {/* Logo principal */}
+          <div className="flex justify-center mb-6 sm:mb-8">
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl blur-lg opacity-40"></div>
+              <div className="relative bg-gradient-to-r from-emerald-500 to-teal-600 p-3 sm:p-4 rounded-2xl shadow-xl">
+                <Sparkles className="w-8 h-8 sm:w-12 sm:h-12 text-white" />
+              </div>
             </div>
           </div>
-          <h1 className="text-6xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent leading-tight">
-            Tu Presencia Digital
-            <br />
-            <span className={`animate-pulse duration-1000 ${isDarkMode ? "text-gray-100" : "text-slate-800"}`}>
-              Transformada por IA
+
+          {/* Título principal optimizado */}
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black mb-4 sm:mb-6 leading-tight">
+            <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 bg-clip-text text-transparent block">
+              Revoluciona
+            </span>
+            <span className="bg-gradient-to-r from-slate-800 via-slate-600 to-slate-800 bg-clip-text text-transparent block mt-2">
+              Tus Redes Sociales
+            </span>
+            <span className="text-lg sm:text-xl md:text-2xl lg:text-3xl block mt-3 sm:mt-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent font-bold">
+              con Inteligencia Artificial
             </span>
           </h1>
-          <p
-            className={`text-xl md:text-2xl mb-8 max-w-2xl mx-auto leading-relaxed ${
-              isDarkMode ? "text-gray-300" : "text-gray-600"
-            }`}
-          >
-            La plataforma todo-en-uno que automatiza tu marketing en redes sociales, genera contenido que convierte y
-            hace crecer tu audiencia mientras duermes.
+
+          {/* Subtítulo optimizado */}
+          <p className="text-base sm:text-lg md:text-xl lg:text-2xl mb-6 sm:mb-8 max-w-4xl mx-auto leading-relaxed text-slate-700 font-medium px-4">
+            La plataforma <span className="text-emerald-600 font-bold">TODO-EN-UNO</span> que automatiza tu marketing digital,
+            <br className="hidden sm:block" />
+            <span className="bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent font-bold">
+              genera contenido viral
+            </span> y hace crecer tu audiencia <span className="text-amber-600 font-bold">mientras duermes</span>
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <button className="group px-8 py-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-full text-lg font-semibold hover:shadow-2xl transform hover:scale-105 transition-all duration-300 flex items-center">
-              Comenzar Gratis
-              <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform duration-200" />
+
+          {/* Botones de acción optimizados */}
+          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-center mb-8 sm:mb-12 px-4">
+            <button className="w-full sm:w-auto group px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 text-white rounded-xl text-base sm:text-lg font-bold hover:shadow-xl transform hover:scale-105 transition-all duration-300 flex items-center justify-center relative overflow-hidden">
+              <div className="absolute inset-0 bg-white/20 transform -skew-x-12 translate-x-full group-hover:translate-x-0 transition-transform duration-700"></div>
+              <Zap className="w-5 h-5 mr-2 relative z-10" />
+              <span className="relative z-10">Comenzar GRATIS</span>
+              <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform duration-300 relative z-10" />
             </button>
-            <button
-              className={`group px-8 py-4 border-2 rounded-full text-lg font-semibold transition-all duration-300 flex items-center ${
-                isDarkMode
-                  ? "border-slate-600 text-gray-300 hover:border-emerald-500 hover:text-emerald-400"
-                  : "border-gray-300 text-gray-700 hover:border-emerald-500 hover:text-emerald-600"
-              }`}
-            >
-              <Play className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform duration-200" />
+            
+            <button className="w-full sm:w-auto group px-6 sm:px-8 py-3 sm:py-4 border-2 border-emerald-400 text-emerald-700 rounded-xl text-base sm:text-lg font-bold hover:bg-emerald-500 hover:text-white hover:border-emerald-500 transition-all duration-300 flex items-center justify-center backdrop-blur-sm bg-white/80">
+              <Play className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform duration-300" />
               Ver Demo
             </button>
           </div>
-        </div>
 
-        {/* Burbujas animadas */}
-        <div className="absolute top-20 left-10 animate-float">
-          <div
-            className={`w-20 h-20 rounded-full opacity-20 ${
-              isDarkMode
-                ? "bg-gradient-to-r from-emerald-400 to-teal-500"
-                : "bg-gradient-to-r from-emerald-400 to-teal-500"
-            }`}
-          ></div>
-        </div>
-        <div className="absolute top-40 right-20 animate-float-delayed">
-          <div
-            className={`w-16 h-16 rounded-full opacity-20 ${
-              isDarkMode
-                ? "bg-gradient-to-r from-violet-400 to-purple-500"
-                : "bg-gradient-to-r from-violet-400 to-purple-500"
-            }`}
-          ></div>
-        </div>
-        <div className="absolute bottom-20 left-1/4 animate-float">
-          <div
-            className={`w-12 h-12 rounded-full opacity-20 ${
-              isDarkMode ? "bg-gradient-to-r from-cyan-400 to-blue-500" : "bg-gradient-to-r from-cyan-400 to-blue-500"
-            }`}
-          ></div>
+          {/* Estadísticas optimizadas */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 max-w-4xl mx-auto px-4">
+            <div className="group text-center p-4 sm:p-6 bg-white/80 backdrop-blur-lg rounded-2xl border border-emerald-200 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+              <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-emerald-600 mb-2 group-hover:scale-110 transition-transform duration-300">+50K</div>
+              <div className="text-slate-700 font-semibold text-sm sm:text-base">Empresas nos eligen</div>
+              <div className="text-emerald-600 text-xs sm:text-sm font-medium mt-1">¡Y creciendo!</div>
+            </div>
+            
+            <div className="group text-center p-4 sm:p-6 bg-white/80 backdrop-blur-lg rounded-2xl border border-violet-200 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+              <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-violet-600 mb-2 group-hover:scale-110 transition-transform duration-300">500%</div>
+              <div className="text-slate-700 font-semibold text-sm sm:text-base">Más engagement</div>
+              <div className="text-violet-600 text-xs sm:text-sm font-medium mt-1">Comprobado</div>
+            </div>
+            
+            <div className="group text-center p-4 sm:p-6 bg-white/80 backdrop-blur-lg rounded-2xl border border-amber-200 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+              <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-amber-600 mb-2 group-hover:scale-110 transition-transform duration-300">25h</div>
+              <div className="text-slate-700 font-semibold text-sm sm:text-base">Ahorradas/semana</div>
+              <div className="text-amber-600 text-xs sm:text-sm font-medium mt-1">Tiempo = Dinero</div>
+            </div>
+          </div>
+
+          {/* Badge de confianza */}
+          <div className="mt-8 sm:mt-12 flex justify-center px-4">
+            <div className="bg-gradient-to-r from-emerald-100 to-teal-100 rounded-full px-4 sm:px-6 py-3 border border-emerald-200 shadow-lg">
+              <div className="flex items-center space-x-2 sm:space-x-4 text-sm sm:text-base">
+                <div className="flex -space-x-1">
+                  {[1,2,3,4,5].map((i) => (
+                    <div key={i} className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-emerald-400 to-teal-500 rounded-full border-2 border-white"></div>
+                  ))}
+                </div>
+                <span className="text-slate-700 font-semibold text-xs sm:text-sm">50,000+ usuarios activos</span>
+                <div className="flex text-amber-400">
+                  {[1,2,3,4,5].map((i) => (
+                    <span key={i} className="text-sm sm:text-base">⭐</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
       {/* Características */}
-      <section
-        id="features-title"
-        className={`py-20 relative transition-colors duration-300 ${isDarkMode ? "bg-slate-800" : "bg-white"}`}
-      >
+      <section id="features" className="py-16 sm:py-20 lg:py-24 bg-gradient-to-br from-white to-emerald-50">
         <div
-          className={`text-center mb-16 transform transition-all duration-800 ${isVisible["features-title"] ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0"}`}
+          className={`text-center mb-12 sm:mb-16 lg:mb-20 px-4 sm:px-6 transform transition-all duration-800 ${isVisible["features"] ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0"}`}
         >
-          <h2
-            className={`text-5xl font-bold mb-4 bg-gradient-to-r bg-clip-text text-transparent ${
-              isDarkMode ? "from-gray-100 to-gray-300" : "from-gray-800 to-gray-600"
-            }`}
-          >
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold mb-4 sm:mb-6 bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
             Características Poderosas
           </h2>
-          <p className={`text-xl max-w-2xl mx-auto ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
+          <p className="text-lg sm:text-xl max-w-3xl mx-auto text-slate-600 leading-relaxed">
             Todas las herramientas que necesitas para dominar las redes sociales
           </p>
         </div>
-        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
           {features.map((feature, index) => (
             <div
               key={feature.id}
               id={feature.id}
-              className={`group relative p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 transform ${
+              className={`group relative p-6 sm:p-8 rounded-2xl sm:rounded-3xl bg-white shadow-lg hover:shadow-2xl transition-all duration-500 transform ${
                 isVisible[feature.id] ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0"
-              } hover:scale-105 border ${isDarkMode ? "bg-slate-700 border-slate-600" : "bg-white border-gray-100"}`}
+              } hover:scale-105 border border-emerald-100 hover:border-emerald-200`}
               style={{ transitionDelay: `${index * 100}ms` }}
             >
               <div
-                className={`absolute inset-0 bg-gradient-to-r ${feature.gradient} rounded-2xl opacity-0 group-hover:opacity-5 transition-opacity duration-300`}
+                className={`absolute inset-0 bg-gradient-to-r ${feature.gradient} rounded-2xl sm:rounded-3xl opacity-0 group-hover:opacity-5 transition-opacity duration-300`}
               ></div>
+
               <div
-                className={`w-16 h-16 bg-gradient-to-r ${feature.gradient} rounded-xl flex items-center justify-center text-white mb-6 group-hover:scale-110 transition-transform duration-300`}
+                className={`w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-r ${feature.gradient} rounded-xl sm:rounded-2xl flex items-center justify-center text-white mb-4 sm:mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg`}
               >
                 {feature.icon}
               </div>
-              <h3
-                className={`text-2xl font-bold mb-4 transition-colors duration-200 ${
-                  isDarkMode ? "text-gray-100 group-hover:text-white" : "text-gray-800 group-hover:text-gray-900"
-                }`}
-              >
+
+              <h3 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 text-slate-800 group-hover:text-emerald-700 transition-colors duration-200">
                 {feature.title}
               </h3>
-              <p
-                className={`leading-relaxed transition-colors duration-200 ${
-                  isDarkMode ? "text-gray-300 group-hover:text-gray-200" : "text-gray-600 group-hover:text-gray-700"
-                }`}
-              >
+
+              <p className="text-slate-600 leading-relaxed group-hover:text-slate-700 transition-colors duration-200 text-sm sm:text-base">
                 {feature.description}
               </p>
             </div>
@@ -585,71 +562,65 @@ const Homepage: FC = () => {
       </section>
 
       {/* Precios */}
-      <section
-        id="pricing-title"
-        className={`py-20 transition-colors duration-300 ${
-          isDarkMode ? "bg-gradient-to-br from-slate-900 to-slate-800" : "bg-gradient-to-br from-gray-50 to-slate-50"
-        }`}
-      >
+      <section id="pricing" className="py-16 sm:py-20 lg:py-24 bg-gradient-to-br from-emerald-50 to-white">
         <div
-          className={`text-center mb-16 transform transition-all duration-800 ${isVisible["pricing-title"] ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0"}`}
+          className={`text-center mb-12 sm:mb-16 lg:mb-20 px-4 sm:px-6 transform transition-all duration-800 ${isVisible["pricing"] ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0"}`}
         >
-          <h2
-            className={`text-5xl font-bold mb-4 bg-gradient-to-r bg-clip-text text-transparent ${
-              isDarkMode ? "from-gray-100 to-gray-300" : "from-gray-800 to-gray-600"
-            }`}
-          >
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold mb-4 sm:mb-6 bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
             Planes para Cada Necesidad
           </h2>
-          <p className={`text-xl ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
+          <p className="text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto">
             Elige el plan perfecto para hacer crecer tu negocio
           </p>
         </div>
-        <div className="max-w-6xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-8">
+
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
           {pricing.map((plan, index) => (
             <div
               key={plan.id}
               id={plan.id}
-              className={`relative p-8 rounded-2xl transition-all duration-700 transform ${
+              className={`relative p-6 sm:p-8 rounded-2xl sm:rounded-3xl transition-all duration-700 transform ${
                 isVisible[plan.id] ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0"
               } ${
                 plan.popular
-                  ? "bg-gradient-to-br from-emerald-500 to-teal-600 text-white scale-105 shadow-2xl"
-                  : isDarkMode
-                    ? "bg-slate-800 text-gray-100 shadow-lg hover:shadow-xl border border-slate-700"
-                    : "bg-white text-gray-800 shadow-lg hover:shadow-xl"
+                  ? "bg-gradient-to-br from-emerald-500 to-teal-600 text-white scale-105 shadow-2xl border-2 border-emerald-400"
+                  : "bg-white text-slate-800 shadow-lg hover:shadow-xl border border-emerald-100 hover:border-emerald-200"
               } hover:scale-105`}
               style={{ transitionDelay: `${index * 150}ms` }}
             >
               {plan.popular && (
-                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <div className="bg-gradient-to-r from-amber-400 to-orange-500 text-white px-4 py-1 rounded-full text-sm font-semibold animate-pulse">
-                    Más Popular
+                <div className="absolute -top-3 sm:-top-4 left-1/2 transform -translate-x-1/2">
+                  <div className="bg-gradient-to-r from-amber-400 to-orange-500 text-white px-4 sm:px-6 py-1 sm:py-2 rounded-full text-xs sm:text-sm font-bold shadow-lg">
+                    ⭐ Más Popular
                   </div>
                 </div>
               )}
-              <div className="text-center mb-8">
-                <h3 className="text-2xl font-bold mb-4">{plan.name}</h3>
-                <div className="flex items-baseline justify-center">
-                  <span className="text-5xl font-bold">{plan.price}</span>
-                  <span className="text-xl ml-1 opacity-80">{plan.period}</span>
+
+              <div className="text-center mb-6 sm:mb-8">
+                <h3 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">{plan.name}</h3>
+                <div className="flex items-baseline justify-center mb-2">
+                  <span className="text-3xl sm:text-4xl lg:text-5xl font-bold">{plan.price}</span>
+                  <span className="text-lg sm:text-xl ml-1 opacity-80">{plan.period}</span>
                 </div>
+                {plan.popular && <div className="text-emerald-100 text-xs sm:text-sm">Ahorra 30% anualmente</div>}
               </div>
-              <ul className="space-y-4 mb-8">
+
+              <ul className="space-y-3 sm:space-y-4 mb-6 sm:mb-8">
                 {plan.features.map((featureText, featureIndex) => (
-                  <li key={featureIndex} className="flex items-center">
+                  <li key={featureIndex} className="flex items-start">
                     <Check
-                      className={`w-5 h-5 mr-3 flex-shrink-0 ${plan.popular ? "text-emerald-300" : "text-emerald-500"}`}
+                      className={`w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3 flex-shrink-0 mt-0.5 ${plan.popular ? "text-emerald-200" : "text-emerald-500"}`}
                     />
-                    <span className="text-sm">{featureText}</span>
+                    <span className="text-xs sm:text-sm leading-relaxed">{featureText}</span>
                   </li>
                 ))}
               </ul>
+
               <button
-                className={`w-full py-4 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 ${
+                className={`w-full py-3 sm:py-4 rounded-xl sm:rounded-2xl font-semibold transition-all duration-300 transform hover:scale-105 text-sm sm:text-base ${
                   plan.popular
-                    ? "bg-white text-emerald-600 hover:bg-gray-100"
-                    : "bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:shadow-lg"
+                    ? "bg-white text-emerald-600 hover:bg-emerald-50 shadow-lg"
+                    : "bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:from-emerald-600 hover:to-teal-700 shadow-lg hover:shadow-xl"
                 }`}
               >
                 {plan.buttonText}
@@ -660,47 +631,42 @@ const Homepage: FC = () => {
       </section>
 
       {/* Testimonios */}
-      <section
-        id="testimonials-title"
-        className={`py-20 transition-colors duration-300 ${isDarkMode ? "bg-slate-800" : "bg-white"}`}
-      >
+      <section id="testimonials" className="py-16 sm:py-20 lg:py-24 bg-gradient-to-br from-white to-slate-50">
         <div
-          className={`text-center mb-16 transform transition-all duration-800 ${isVisible["testimonials-title"] ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0"}`}
+          className={`text-center mb-12 sm:mb-16 lg:mb-20 px-4 sm:px-6 transform transition-all duration-800 ${isVisible["testimonials"] ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0"}`}
         >
-          <h2
-            className={`text-5xl font-bold mb-4 bg-gradient-to-r bg-clip-text text-transparent ${
-              isDarkMode ? "from-gray-100 to-gray-300" : "from-gray-800 to-gray-600"
-            }`}
-          >
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold mb-4 sm:mb-6 bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
             Lo Que Dicen Nuestros Clientes
           </h2>
+          <p className="text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto">
+            Más de 10,000 empresas transformando su presencia digital
+          </p>
         </div>
-        <div className="max-w-6xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-8">
-          {testimonials.map((t, index) => (
+
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+          {testimonials.map((testimonial, index) => (
             <div
-              key={t.id}
-              id={t.id}
-              className={`p-8 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-500 transform ${
-                isVisible[t.id] ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0"
-              } hover:scale-105 ${
-                isDarkMode
-                  ? "bg-gradient-to-br from-slate-700 to-slate-600"
-                  : "bg-gradient-to-br from-gray-50 to-slate-50"
-              }`}
+              key={testimonial.id}
+              id={testimonial.id}
+              className={`p-6 sm:p-8 rounded-2xl sm:rounded-3xl bg-white shadow-lg hover:shadow-2xl transition-all duration-500 transform ${
+                isVisible[testimonial.id] ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0"
+              } hover:scale-105 border border-emerald-100 hover:border-emerald-200 group`}
               style={{ transitionDelay: `${index * 200}ms` }}
             >
-              <div className="flex mb-4">
+              <div className="flex mb-4 sm:mb-6">
                 {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-5 h-5 text-amber-500 fill-current" />
+                  <Star key={i} className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 fill-current" />
                 ))}
               </div>
-              <p className={`mb-6 italic leading-relaxed ${isDarkMode ? "text-gray-200" : "text-gray-700"}`}>
-                {t.text}
+
+              <p className="text-slate-700 mb-4 sm:mb-6 italic leading-relaxed text-sm sm:text-base lg:text-lg group-hover:text-slate-800 transition-colors duration-200">
+                {testimonial.text}
               </p>
-              <div>
-                <div className={`font-semibold ${isDarkMode ? "text-gray-100" : "text-gray-800"}`}>{t.name}</div>
-                <div className={`text-sm ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>{t.role}</div>
-                <div className="text-sm text-emerald-600 font-medium">{t.company}</div>
+
+              <div className="border-t border-emerald-100 pt-4 sm:pt-6">
+                <div className="font-bold text-slate-800 text-base sm:text-lg">{testimonial.name}</div>
+                <div className="text-slate-600 text-xs sm:text-sm">{testimonial.role}</div>
+                <div className="text-emerald-600 font-semibold text-xs sm:text-sm">{testimonial.company}</div>
               </div>
             </div>
           ))}
@@ -708,59 +674,180 @@ const Homepage: FC = () => {
       </section>
 
       {/* CTA Final */}
-      <section id="final-cta" className="py-20 bg-gradient-to-r from-emerald-600 to-teal-700 text-white text-center">
+      <section
+        id="final-cta"
+        className="py-16 sm:py-20 lg:py-24 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white text-center relative overflow-hidden"
+      >
+        <div className="absolute inset-0 bg-black/10"></div>
         <div
-          className={`max-w-4xl mx-auto px-6 transform transition-all duration-800 ${isVisible["final-cta"] ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0"}`}
+          className={`max-w-5xl mx-auto px-4 sm:px-6 relative z-10 transform transition-all duration-800 ${isVisible["final-cta"] ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0"}`}
         >
-          <h2 className="text-5xl font-bold mb-6">¿Listo para Transformar tu Estrategia Digital?</h2>
-          <p className="text-xl mb-8 opacity-90">Únete a miles de empresas que ya están creciendo con Nimi</p>
-          <button className="px-10 py-4 bg-white text-emerald-600 rounded-full text-xl font-bold hover:bg-gray-100 transform hover:scale-105 transition-all duration-300 shadow-lg">
-            Comenzar Prueba Gratuita
-          </button>
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold mb-6 sm:mb-8 leading-tight">
+            ¿Listo para Transformar tu Estrategia Digital?
+          </h2>
+          <p className="text-lg sm:text-xl lg:text-2xl mb-8 sm:mb-10 opacity-90 max-w-3xl mx-auto leading-relaxed">
+            Únete a miles de empresas que ya están creciendo exponencialmente con Nimi.
+            <span className="font-semibold block sm:inline"> Prueba gratuita de 14 días, sin tarjeta de crédito.</span>
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-center">
+            <button className="w-full sm:w-auto px-8 sm:px-12 py-3 sm:py-4 bg-white text-emerald-600 rounded-xl sm:rounded-2xl text-lg sm:text-xl font-bold hover:bg-emerald-50 transform hover:scale-105 transition-all duration-300 shadow-2xl">
+              Comenzar Prueba Gratuita
+            </button>
+            <button className="w-full sm:w-auto px-8 sm:px-12 py-3 sm:py-4 border-2 border-white/30 text-white rounded-xl sm:rounded-2xl text-lg sm:text-xl font-bold hover:bg-white/10 transition-all duration-300">
+              Hablar con un Experto
+            </button>
+          </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer
-        className={`py-12 text-center transition-colors duration-300 ${
-          isDarkMode ? "bg-slate-900 text-gray-300" : "bg-gray-900 text-gray-300"
-        }`}
-      >
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="text-2xl font-bold mb-4 bg-gradient-to-r from-emerald-400 to-teal-500 bg-clip-text text-transparent">
-            Nimi
+      <footer className="py-12 sm:py-16 bg-slate-900 text-slate-300">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-8 sm:mb-12">
+            <div className="col-span-1 sm:col-span-2">
+              <div className="text-2xl sm:text-3xl font-bold mb-3 sm:mb-4 bg-gradient-to-r from-emerald-400 to-teal-500 bg-clip-text text-transparent flex items-center">
+                <div className="mr-2 sm:mr-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white p-1.5 sm:p-2 rounded-lg sm:rounded-xl">
+                  <Sparkles className="w-4 h-4 sm:w-6 sm:h-6" />
+                </div>
+                Nimi
+              </div>
+              <p className="text-slate-400 mb-4 sm:mb-6 max-w-md leading-relaxed text-sm sm:text-base">
+                Automatización inteligente para redes sociales. Transforma tu presencia digital con el poder de la
+                inteligencia artificial.
+              </p>
+              <div className="flex space-x-3 sm:space-x-4">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-slate-800 rounded-lg flex items-center justify-center hover:bg-emerald-600 transition-colors duration-200 cursor-pointer">
+                  <span className="text-xs sm:text-sm font-bold">f</span>
+                </div>
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-slate-800 rounded-lg flex items-center justify-center hover:bg-emerald-600 transition-colors duration-200 cursor-pointer">
+                  <span className="text-xs sm:text-sm font-bold">t</span>
+                </div>
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-slate-800 rounded-lg flex items-center justify-center hover:bg-emerald-600 transition-colors duration-200 cursor-pointer">
+                  <span className="text-xs sm:text-sm font-bold">in</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-semibold text-white mb-3 sm:mb-4 text-sm sm:text-base">Producto</h4>
+              <ul className="space-y-2">
+                <li>
+                  <a href="#" className="hover:text-emerald-400 transition-colors duration-200 text-xs sm:text-sm">
+                    Características
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-emerald-400 transition-colors duration-200 text-xs sm:text-sm">
+                    Precios
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-emerald-400 transition-colors duration-200 text-xs sm:text-sm">
+                    API
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-emerald-400 transition-colors duration-200 text-xs sm:text-sm">
+                    Integraciones
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="font-semibold text-white mb-3 sm:mb-4 text-sm sm:text-base">Soporte</h4>
+              <ul className="space-y-2">
+                <li>
+                  <a href="#" className="hover:text-emerald-400 transition-colors duration-200 text-xs sm:text-sm">
+                    Centro de Ayuda
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-emerald-400 transition-colors duration-200 text-xs sm:text-sm">
+                    Contacto
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-emerald-400 transition-colors duration-200 text-xs sm:text-sm">
+                    Privacidad
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-emerald-400 transition-colors duration-200 text-xs sm:text-sm">
+                    Términos
+                  </a>
+                </li>
+              </ul>
+            </div>
           </div>
-          <p className="mb-6">Automatización inteligente para redes sociales</p>
-          <div className="flex justify-center space-x-8 mb-6">
-            <a href="#" className="hover:text-white transition-colors duration-200">
-              Privacidad
-            </a>
-            <a href="#" className="hover:text-white transition-colors duration-200">
-              Términos
-            </a>
-            <a href="#" className="hover:text-white transition-colors duration-200">
-              Soporte
-            </a>
-            <a href="#" className="hover:text-white transition-colors duration-200">
-              Contacto
-            </a>
+
+          <div className="border-t border-slate-800 pt-6 sm:pt-8 text-center">
+            <p className="text-slate-400 text-xs sm:text-sm">
+              © 2024 Nimi. Todos los derechos reservados. Hecho con ❤️ para revolucionar el marketing digital.
+            </p>
           </div>
-          <p className="text-sm opacity-70">© 2024 Nimi. Todos los derechos reservados.</p>
         </div>
       </footer>
 
       {/* Scroll to Top Button */}
       <button
-        className={`fixed bottom-10 right-10 rounded-full p-3 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 ${
-          isDarkMode
-            ? "bg-emerald-600 text-white hover:bg-emerald-700"
-            : "bg-emerald-500 text-white hover:bg-emerald-600"
-        }`}
+        className="fixed bottom-6 right-6 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-full p-3 shadow-2xl hover:shadow-3xl transform hover:scale-110 transition-all duration-300 z-50"
         onClick={() => gsap.to(window, { duration: 1, scrollTo: 0, ease: "power2.out" })}
+        aria-label="Volver arriba"
       >
-        <ArrowUpCircle className="w-8 h-8" />
+        <ArrowUpCircle className="w-5 h-5 sm:w-6 sm:h-6" />
       </button>
+
+      <style jsx>{`
+        @keyframes float {
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          50% { transform: translateY(-10px) rotate(5deg); }
+        }
+        
+        @keyframes float-delayed {
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          50% { transform: translateY(-15px) rotate(-5deg); }
+        }
+        
+        @keyframes social-float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-20px); }
+        }
+        
+        @keyframes gradient {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+        
+        @keyframes pulse-glow {
+          0%, 100% { box-shadow: 0 0 20px rgba(16, 185, 129, 0.3); }
+          50% { box-shadow: 0 0 40px rgba(16, 185, 129, 0.6); }
+        }
+        
+        .animate-float {
+          animation: float 6s ease-in-out infinite;
+        }
+        
+        .animate-float-delayed {
+          animation: float-delayed 8s ease-in-out infinite;
+        }
+        
+        .animate-social-float {
+          animation: social-float 4s ease-in-out infinite;
+        }
+        
+        .animate-gradient {
+          background-size: 200% 200%;
+          animation: gradient 8s ease infinite;
+        }
+        
+        .animate-pulse-glow {
+          animation: pulse-glow 2s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   )
 }
+
 export default Homepage
